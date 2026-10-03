@@ -1,4 +1,4 @@
-package tn.esprit.studentmanagement.services;
+﻿package tn.esprit.studentmanagement.services;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +15,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +48,16 @@ class StudentServiceTest {
 
         assertEquals(1, result.size());
         assertEquals("Amira", result.get(0).getFirstName());
+        verify(studentRepository, times(1)).findAll();
+    }
+
+    @Test
+    void getAllStudents_sansEtudiant_retourneListeVide() {
+        when(studentRepository.findAll()).thenReturn(List.of());
+
+        List<Student> result = studentService.getAllStudents();
+
+        assertTrue(result.isEmpty());
         verify(studentRepository, times(1)).findAll();
     }
 
