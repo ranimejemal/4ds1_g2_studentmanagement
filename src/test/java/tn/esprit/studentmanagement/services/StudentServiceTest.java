@@ -1,4 +1,4 @@
-﻿package tn.esprit.studentmanagement.services;
+package tn.esprit.studentmanagement.services;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
