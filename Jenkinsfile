@@ -11,7 +11,7 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = 'ranimejemal/student-management'
+        IMAGE_NAME = 'ranimejm32/student-management'
         IMAGE_TAG  = "${env.BUILD_NUMBER}"
     }
 
