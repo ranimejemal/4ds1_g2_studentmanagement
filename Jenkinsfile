@@ -2,24 +2,23 @@ pipeline {
     agent any
 
     tools {
-        maven 'M3'      // adapter aux noms configures dans Manage Jenkins > Tools
-        jdk 'jdk17'
+        maven 'M3'      // doit correspondre au nom configure dans Manage Jenkins > Tools
+        jdk 'jdk17'     // idem
     }
 
     triggers {
-        pollSCM('* * * * *')   // inchange : reprenez votre declencheur existant
+        pollSCM('* * * * *')
     }
 
     environment {
-    IMAGE_NAME = 'ranimejemal/student-management'
-    IMAGE_TAG  = "${env.BUILD_NUMBER}"
-}
+        IMAGE_NAME = 'ranimejemal/student-management'
+        IMAGE_TAG  = "${env.BUILD_NUMBER}"
+    }
 
     stages {
-        // --- Stages existants : reprenez les votres a l'identique ---
         stage('Commit') {
             steps {
-                git branch: 'main', url: 'https://github.com/VOTRE_COMPTE/student-management.git'
+                git branch: 'ranimejemal_4DS1_G2', url: 'https://github.com/ranimejemal/4ds1_g2_studentmanagement.git'
             }
         }
         stage('Build') {
@@ -32,8 +31,6 @@ pipeline {
                 sh 'mvn -B test'
             }
         }
-
-        // --- Nouveaux stages ---
         stage('Docker Build') {
             steps {
                 sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest .'

@@ -8,7 +8,7 @@ WORKDIR /app
 COPY target/student-management-*.jar app.jar
 
 # Port d'écoute de l'application
-EXPOSE 8080
+EXPOSE 8089
 
 # Commande de démarrage (forme exec)
 ENTRYPOINT ["java", "-jar", "app.jar"]
