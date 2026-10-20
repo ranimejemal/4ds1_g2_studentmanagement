@@ -1,8 +1,8 @@
 package tn.esprit.studentmanagement.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,8 +25,11 @@ public class Student {
     private String address;
 
     @ManyToOne
+    @JsonIgnoreProperties("students")
+    @ToString.Exclude
     private Department department;
 
     @OneToMany(mappedBy = "student")
+    @ToString.Exclude
     private List<Enrollment> enrollments;
 }

@@ -21,5 +21,6 @@ public class Department {
     private String head; // chef de département
 
     @OneToMany(mappedBy = "department")
+    @ToString.Exclude
     private List<Student> students;
 }
