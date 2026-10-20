@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     tools {
-        maven 'M3'      // doit correspondre au nom configure dans Manage Jenkins > Tools
-        jdk 'jdk17'     // idem
-    }
+    jdk 'JDK17'
+    maven 'M2_HOME'
+}
 
     triggers {
         pollSCM('* * * * *')
