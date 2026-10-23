@@ -1,24 +1,26 @@
 pipeline {
     agent any
-
     tools {
-        maven 'M3'      // doit correspondre au nom configure dans Manage Jenkins > Tools
-        jdk 'jdk17'     // idem
+        jdk 'JDK17'
+        maven 'M2_HOME'
     }
-
-    triggers {
-        pollSCM('* * * * *')
-    }
-
     environment {
-        IMAGE_NAME = 'ranimejm32/student-management'
-        IMAGE_TAG  = "${env.BUILD_NUMBER}"
+        DOCKERHUB_USER = 'ranimejm32'
+        IMAGE = "${DOCKERHUB_USER}/student-management"
     }
-
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
     stages {
-        stage('Commit') {
+        stage('Git') {
             steps {
-                git branch: 'ranimejemal_4DS1_G2', url: 'https://github.com/ranimejemal/4ds1_g2_studentmanagement.git'
+                checkout scm
+                script {
+                    env.BRANCHE = (env.GIT_BRANCH ?: 'main').replaceAll('^origin/', '')
+                    env.TAG = "${env.BRANCHE}-${env.BUILD_NUMBER}"
+                }
+                sh 'git log -1 --pretty=format:"%h - %an : %s"'
+                echo "Branche : ${env.BRANCHE} — tag de l'image : ${env.TAG}"
             }
         }
         stage('Build') {
@@ -28,40 +30,74 @@ pipeline {
         }
         stage('Test unitaire') {
             steps {
+                // JaCoCo mesure la couverture pendant les tests
                 sh 'mvn -B test'
             }
-        }
-        stage('Docker Build') {
-            steps {
-                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest .'
-            }
-        }
-        stage('Docker Push') {
-            steps {
-                withCredentials([usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS')]) {
-                    // Apostrophes : le shell, et non Groovy, developpe la variable secrete
-                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
-                    sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
-                    sh 'docker push $IMAGE_NAME:latest'
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
                 }
             }
         }
-    }
-
-    post {
-        always {
-            junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-            archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
-            sh 'docker logout || true'
+        stage('Analyse SonarQube') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh """
+                        mvn -B sonar:sonar \\
+                          -Dsonar.projectKey=student-management-${BRANCHE} \\
+                          -Dsonar.projectName=student-management-${BRANCHE}
+                    """
+                }
+            }
         }
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        stage('Docker build') {
+            steps {
+                sh "docker build -t ${IMAGE}:${TAG} ."
+            }
+        }
+        stage('Docker push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                                  usernameVariable: 'DH_USER',
+                                                  passwordVariable: 'DH_PASS')]) {
+                    sh 'echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin'
+                    sh "docker push ${IMAGE}:${TAG}"
+                    script {
+                        if (env.BRANCHE == 'main') {
+                            sh "docker tag ${IMAGE}:${TAG} ${IMAGE}:latest"
+                            sh "docker push ${IMAGE}:latest"
+                        }
+                    }
+                    sh 'docker logout'
+                }
+            }
+        }
+        stage('Déploiement') {
+            when { expression { env.BRANCHE == 'main' } }
+            steps {
+                sh 'docker compose pull app'
+                sh 'docker compose up -d'
+            }
+        }
+    }
+    post {
         success {
-            echo "Pipeline OK : image ${IMAGE_NAME}:${IMAGE_TAG} publiee."
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            echo "Succès : image ${IMAGE}:${TAG} publiée sur Docker Hub."
+            echo "Analyse SonarQube : projet student-management-${BRANCHE}"
         }
         failure {
-            echo 'Pipeline en echec : aucune image publiee pour ce build.'
+            echo 'Échec : consulter la Console Output du stage en rouge.'
+        }
+        always {
+            sh "docker image rm -f ${IMAGE}:${TAG} || true"
         }
     }
 }
