@@ -30,11 +30,30 @@ pipeline {
         }
         stage('Test unitaire') {
             steps {
+                // JaCoCo mesure la couverture pendant les tests
                 sh 'mvn -B test'
             }
             post {
                 always {
                     junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+        stage('Analyse SonarQube') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh """
+                        mvn -B sonar:sonar \\
+                          -Dsonar.projectKey=student-management-${BRANCHE} \\
+                          -Dsonar.projectName=student-management-${BRANCHE}
+                    """
+                }
+            }
+        }
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -72,6 +91,7 @@ pipeline {
         success {
             archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             echo "Succès : image ${IMAGE}:${TAG} publiée sur Docker Hub."
+            echo "Analyse SonarQube : projet student-management-${BRANCHE}"
         }
         failure {
             echo 'Échec : consulter la Console Output du stage en rouge.'
